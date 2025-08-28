@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <title>Arthur Macamo — Chat</title>
+  <meta name="theme-color" content="#075E54"/>
+  <style>
+    :root{--wa-green:#075E54;--bg:#E5DDD5;--bubble-me:#D9FDD3;--bubble-bot:#FFFFFF;--text:#111;--radius:18px}
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);background:var(--bg);
+      height:100svh;min-height:100vh;overflow:hidden;-webkit-text-size-adjust:100%;
+      background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320"><rect width="100%" height="100%" fill="%23E5DDD5"/><g opacity=".14" stroke="%23bfb6ad" stroke-width="1" fill="none"><path d="M20 40c12-12 36-12 48 0M36 84c12-12 36-12 48 0M88 40c12-12 36-12 48 0M104 84c12-12 36-12 48 0"/><circle cx="52" cy="150" r="14"/><rect x="110" y="150" width="26" height="18" rx="4"/><path d="M190 60c10-8 22-8 32 0M206 92c10-8 22-8 32 0"/><path d="M170 190q16-12 32 0t32 0"/><circle cx="270" cy="70" r="10"/><circle cx="250" cy="240" r="12"/><path d="M30 230c18-10 28-10 46 0M46 262c18-10 28-10 46 0"/></g></svg>');background-size:380px}
+    .app{position:fixed;inset:0;display:flex;flex-direction:column;height:100%}
+    .topbar{background:#075E54;color:#fff;display:flex;align-items:center;gap:10px;padding:max(10px,env(safe-area-inset-top)) 12px 10px 8px}
+    .avatar{width:36px;height:36px;border-radius:50%;overflow:hidden;border:2px solid rgba(255,255,255,.25)} .avatar img{width:100%;height:100%;object-fit:cover}
+    .who{line-height:1.1;display:flex;flex-direction:column} .row-name{display:flex;align-items:center;gap:6px} .who b{font-size:15px} .badge{width:16px;height:16px} .who small{color:#d1fae5}
+    .chat{flex:1;overflow:auto;padding:10px 10px calc(6px + env(safe-area-inset-bottom)) 10px;-webkit-overflow-scrolling:touch}
+    .msg{display:flex;margin:6px 0} .msg .bubble{max-width:78%;padding:8px 10px;border-radius:var(--radius);font-size:15px;line-height:1.35;word-break:break-word;white-space:pre-wrap;box-shadow:0 1px 0 rgba(0,0,0,.05)}
+    .msg.bot{justify-content:flex-start} .msg.bot .bubble{background:var(--bubble-bot);border-bottom-left-radius:6px} .msg.me{justify-content:flex-end} .msg.me .bubble{background:var(--bubble-me);border-bottom-right-radius:6px}
+    .time{display:inline-block;margin-left:8px;font-size:11px;color:#8f8f8f;vertical-align:bottom}
+    .typing .bubble{display:inline-flex;gap:4px;align-items:center} .dot{width:6px;height:6px;border-radius:50%;background:#9ca3af;animation:blink 1.25s infinite} .dot:nth-child(2){animation-delay:.15s} .dot:nth-child(3){animation-delay:.3s}
+    @keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+    .composer{position:sticky;bottom:0;display:flex;gap:8px;align-items:center;padding:10px 10px calc(10px + env(safe-area-inset-bottom)) 10px;background:#f7f7f7;border-top:1px solid #e9ecef}
+    .attach-btn,.mic-btn{width:42px;height:42px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;display:grid;place-items:center} .attach-btn svg,.mic-btn svg{width:20px;height:20px;opacity:.85}
+    .composer input{flex:1;padding:13px 16px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;font-size:17px;line-height:1.2} .composer button.send{padding:12px 18px;border-radius:999px;border:0;background:#128C7E;color:#fff;font-weight:700;font-size:17px}
+    .img-msg{display:block;max-width:240px;border-radius:12px;margin-bottom:4px}
+    .audio-wrap{display:flex;align-items:center;gap:8px} .rec-dot{width:8px;height:8px;border-radius:50%;background:#22c55e} audio{height:32px}
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="avatar"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="Arthur Macamo"/></div>
+      <div class="who">
+        <div class="row-name">
+          <b>Arthur Macamo</b>
+          <svg class="badge" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" fill="#4FC3F7"/>
+            <path d="M16.5 9l-5 6-2.5-2.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <small id="status">online agora</small>
+      </div>
+    </header>
+
+    <section class="chat" id="chat" aria-live="polite"></section>
+
+    <div class="composer">
+      <button class="attach-btn" id="attachBtn" aria-label="Anexar foto">
+        <svg viewBox="0 0 24 24"><path d="M8 12.5V7a4 4 0 1 1 8 0v7.5a5.5 5.5 0 1 1-11 0V8.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <button class="mic-btn" id="micBtn" aria-label="Gravar áudio (pressione e segure)">
+        <svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a 3 3 0 0 0-3-3Zm-7 8a7 7 0 0 0 14 0M12 19v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <input id="input" type="text" placeholder="Escreve aqui..." autocomplete="off" inputmode="text"/>
+      <button class="send" id="send">Enviar</button>
+      <input type="file" id="file" accept="image/*" capture="environment" style="display:none"/>
+    </div>
+  </main>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbwV3IV27_QA9LfrYRgyALBqNemKLs8gtVn54rHr5dMmVYcsT0dAwd9ey1MNqpprGDhZ3w/exec"; // HARD-CODED
+
+    const STATUS = { online:"online agora", typing:"escrevendo...", recording:"gravando..." };
+    const statusEl = document.getElementById("status");
+    function setStatus(s){ statusEl.textContent = s; }
+
+    const RAW = {
+      m1: "Ilustre, peço o seu número para poder gravar e procurar uma vaga para si.",
+      m2: "Irmão, estou procurando uma vaga para si em um dos grupos porque muitos pediram acesso e quase todos já estão lotados.",
+      m3: "Mas enquanto eu procuro um grupo eu quero saber se você já faturou com Aviator ou somente perdes?",
+      m4: "Perfeito. Irmão, acabo de encontrar uma vaga em um grupo onde já estão a faturar muito!",
+      m5: "Então irmão, deves ter no mínimo 10 mts para poderes depositar na tua conta e poderes começar a fazer muitas apostas usando tudo que irei ensinar.",
+      m6: "Irmão, será que tens 10 mts para depositares na tua conta e tempo para começares a apostar e ainda hoje faturar 1000 mts?\nOu posso remover teu nome e não te aprovar no grupo?",
+      m7: "Óptimo, irmão. No grupo só apostamos usando contas especiais criadas na *PLACARD* através do nosso link especial pois essas contas nos fazem driblar o algoritmo e faturar muito.",
+      m8: "Então deves criar uma conta na *PLACARD* através do link especial abaixo e depois deves depositar no mínimo 10mts para poder activares a conta e depois me mandar a foto da conta para poder te aprovar no grupo *\n\n*Nb*: ao depositar 10mts nesta conta especial vais ganhar um bónus de 200mts que podes levantar se quiseres."
+    };
+
+    const CTA_URL="https://media1.placard.co.mz/redirect.aspx?pid=8267&bid=1690";
+
+    let step="idle";
+    let userPhone="";
+    const chat=document.getElementById("chat");
+    const input=document.getElementById("input");
+    const btn=document.getElementById("send");
+    const file=document.getElementById("file");
+    const attachBtn=document.getElementById("attachBtn");
+    const micBtn=document.getElementById("micBtn");
+    let mediaStream=null, mediaRecorder=null, chunks=[];
+
+    function now(){ return new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+    function escapeHtml(s){ return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
+    function addMsg(who,text){ const d=document.createElement('div'); d.className='msg '+(who==='me'?'me':'bot');
+      const b=document.createElement('div'); b.className='bubble'; b.innerHTML=escapeHtml(text).replace(/\*(.*?)\*/g,'<b>$1</b>')+` <span class='time'>${now()}</span>`; d.appendChild(b); chat.appendChild(d); chat.scrollTop=chat.scrollHeight; }
+    function addMsgWithCTA(text,url,label='👉 Clique aqui e cria conta'){ const d=document.createElement('div'); d.className='msg bot'; const b=document.createElement('div'); b.className='bubble';
+      b.innerHTML=escapeHtml(text).replace(/\*(.*?)\*/g,'<b>$1</b>')+` <span class='time'>${now()}</span>`; const a=document.createElement('a'); a.href=url; a.target='_blank'; a.rel='noopener';
+      a.style.cssText='display:inline-block;margin-top:10px;padding:14px 18px;border-radius:12px;background:#25D366;color:#064e3b;font-weight:800;text-decoration:none;min-width:260px;text-align:center';
+      a.textContent=label; a.addEventListener('click', ()=>{ try{ fbq('track', 'Purchase', {value:10.00,currency:'MZN',content_name:'placard_cta'}); }catch(e){} }); b.appendChild(a);
+      d.appendChild(b); chat.appendChild(d); chat.scrollTop=chat.scrollHeight; }
+    function typing(){ const d=document.createElement('div'); d.className='msg bot typing'; d.innerHTML=`<div class='bubble'><span class='dot'></span><span class='dot'></span><span class='dot'></span></div>`; chat.appendChild(d); chat.scrollTop=chat.scrollHeight; return d; }
+    async function botType(text,delay=1200){ setStatus(STATUS.typing); const t=typing(); await new Promise(r=>setTimeout(r, delay)); t.remove(); setStatus(STATUS.online); addMsg('bot', text); }
+    async function botTypeCTA(text,url,delay=1200){ setStatus(STATUS.typing); const t=typing(); await new Promise(r=>setTimeout(r, delay)); t.remove(); setStatus(STATUS.online); addMsgWithCTA(text,url); }
+
+    function extractPhone(text){
+      const p=text.match(/(\+?\d[\d \-]{7,14}\d)/);
+      let phone=p?p[0]:"";
+      if(phone) phone=phone.replace(/[^\d+]/g,"");
+      if(phone && phone.startsWith("8")) phone="+258"+phone;
+      if(phone && phone.startsWith("0")) phone="+258"+phone.replace(/^0+/,"");
+      return phone;
+    }
+
+    async function saveContact(phone){
+      const ts=new Date().toISOString();
+      try{ fbq('track','Lead',{content_name:'whatsapp_capture'}); }catch(e){}
+      try{
+        const ctrl = new AbortController();
+        const t = setTimeout(()=>ctrl.abort(), 8000);
+        const res = await fetch(API_URL, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ phone, ts }), signal: ctrl.signal
+        });
+        clearTimeout(t);
+      }catch(err){ console.warn('Falha ao enviar para API', err); }
+    }
+
+    window.addEventListener('DOMContentLoaded', async ()=>{ 
+      step='await_phone';
+      await botType(RAW.m1, 900);
+    });
+
+    btn.addEventListener("click", onSend);
+    input.addEventListener("keydown", (e)=>{ if(e.key==='Enter') onSend(); });
+    attachBtn.addEventListener("click", ()=> file.click());
+    file.addEventListener("change", onFileSelected);
+    ["mousedown","touchstart"].forEach(ev=> micBtn.addEventListener(ev, startRec));
+    ["mouseup","mouseleave","touchend","touchcancel"].forEach(ev=> micBtn.addEventListener(ev, stopRec));
+
+    async function onSend(){
+      const v=input.value.trim(); if(!v) return; input.value=""; addMsg("me", v);
+      if(step==='await_phone'){
+        const phone=extractPhone(v);
+        if(!phone){ await botType("Obrigado! Agora envia apenas o teu número (com indicativo +258 ou começando por 8).", 800); return; }
+        userPhone = phone; await saveContact(userPhone);
+        await delayTyping(5000); await botType(RAW.m2);
+        await delayTyping(3000); await botType(RAW.m3);
+        step='await_m3_reply'; return;
+      }
+      if(step==='await_m3_reply'){
+        await delayTyping(10000); await botType(RAW.m4);
+        await delayTyping(5000);  await botType(RAW.m5);
+        await delayTyping(5000);  await botType(RAW.m6);
+        step='await_m6_reply'; return;
+      }
+      if(step==='await_m6_reply'){
+        await delayTyping(10000); await botType(RAW.m7);
+        await delayTyping(5000);  await botTypeCTA(RAW.m8, CTA_URL);
+        step='end'; return;
+      }
+      if(step==='end'){ await botType("Estou aguardando criares a conta e me mandares a foto que comprove que já criaste a conta e depositaste pelo menos 10mts para activar a conta.", 1500); }
+    }
+
+    async function onFileSelected(e){ const f=e.target.files[0]; if(!f) return; const reader=new FileReader();
+      reader.onload=async (ev)=>{ addImageMsg('me', ev.target.result, input.value.trim()); input.value=''; };
+      reader.readAsDataURL(f); e.target.value=''; }
+    function addImageMsg(who,src,caption=''){ const d=document.createElement('div'); d.className='msg '+(who==='me'?'me':'bot');
+      const b=document.createElement('div'); b.className='bubble'; const img=document.createElement('img'); img.src=src; img.alt='imagem enviada'; img.className='img-msg'; b.appendChild(img);
+      if(caption){ const p=document.createElement('div'); p.textContent=caption; b.appendChild(p); } b.innerHTML+=` <span class='time'>${now()}</span>`; d.appendChild(b); chat.appendChild(d); chat.scrollTop=chat.scrollHeight; }
+
+    async function startRec(e){ e.preventDefault(); try{ setStatus(STATUS.recording);
+      if(!mediaStream) mediaStream=await navigator.mediaDevices.getUserMedia({audio:true});
+      const mr=new MediaRecorder(mediaStream); mediaRecorder=mr; chunks=[]; mr.ondataavailable=(ev)=>{ if(ev.data&&ev.data.size>0) chunks.push(ev.data); }; mr.onstop=onRecStop; mr.start();
+    }catch(err){ setStatus(STATUS.online); alert("Permita o microfone para gravar áudio."); } }
+    function stopRec(e){ e.preventDefault(); if(mediaRecorder && mediaRecorder.state!=="inactive"){ mediaRecorder.stop(); } }
+    function onRecStop(){ setStatus(STATUS.online); const blob=new Blob(chunks,{type:'audio/webm'}); const url=URL.createObjectURL(blob); addAudioMsg("me", url); }
+    function addAudioMsg(who,src){ const d=document.createElement('div'); d.className='msg '+(who==='me'?'me':'bot'); const b=document.createElement('div'); b.className='bubble';
+      const wrap=document.createElement('div'); wrap.className='audio-wrap'; const dot=document.createElement('div'); dot.className='rec-dot'; const audio=document.createElement('audio'); audio.src=src; audio.controls=true; audio.preload='metadata';
+      wrap.appendChild(dot); wrap.appendChild(audio); b.appendChild(wrap); b.innerHTML+=` <span class='time'>${now()}</span>`; d.appendChild(b); chat.appendChild(d); chat.scrollTop=chat.scrollHeight; }
+
+    function wait(ms){ return new Promise(res=>setTimeout(res,ms)); }
+    async function delayTyping(ms){ setStatus(STATUS.typing); const t=typing(); await wait(ms); t.remove(); setStatus(STATUS.online); }
+  </script>
+
+  <!-- Meta Pixel (ID fixo) -->
+  <script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window, document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '1828238448117261');
+  fbq('track', 'PageView');
+  </script>
+  <noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=1828238448117261&ev=PageView&noscript=1"
+  /></noscript>
+</body>
+</html>

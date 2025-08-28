@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin — Contatos captados</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;margin:24px;background:#f8fafc;color:#0f172a}
+    h1{margin:0 0 10px} .muted{color:#475569}
+    table{border-collapse:collapse;width:100%;background:#fff;border:1px solid #e2e8f0}
+    th,td{padding:10px;border-bottom:1px solid #e2e8f0;font-size:14px}
+    th{background:#f1f5f9;text-align:left}
+    .row{display:flex;gap:8px;margin:12px 0 20px}
+    button{background:#0ea5e9;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}
+    button.secondary{background:#e2e8f0;color:#0f172a}
+    button.danger{background:#ef4444}
+  </style>
+</head>
+<body>
+  <h1>Contatos captados</h1>
+  <div class="muted">Somente você deve acessar esta página (não divulgue a URL).</div>
+  <div class="row">
+    <button id="refresh">Atualizar</button>
+    <button id="exportCsv">Exportar CSV</button>
+    <button id="exportJson" class="secondary">Exportar JSON</button>
+    <button id="clear" class="danger">Limpar todos</button>
+  </div>
+  <table id="tbl">
+    <thead><tr><th>#</th><th>Telefone</th><th>Captado em (ISO)</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+<script>
+  const KEY = "contacts_v1";
+  const tbody = document.querySelector("#tbl tbody");
+
+  function load(){
+    const arr = JSON.parse(localStorage.getItem(KEY)||"[]");
+    tbody.innerHTML = "";
+    arr.forEach((c,i)=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML = `<td>${i+1}</td><td>${c.phone||""}</td><td>${c.ts||""}</td>`;
+      tbody.appendChild(tr);
+    });
+    return arr;
+  }
+
+  function toCSV(arr){
+    const header = ["phone","timestamp"];
+    const lines = [header.join(",")].concat(arr.map(c=>[c.phone||"", c.ts||""].map(x=>`"${(x||"").replaceAll('"','""')}"`).join(",")));
+    return lines.join("\n");
+  }
+
+  document.getElementById("refresh").onclick=load;
+  document.getElementById("exportCsv").onclick=()=>{
+    const arr=load(); if(!arr.length){ alert("Sem contatos ainda"); return; }
+    const csv = toCSV(arr);
+    const blob = new Blob([csv], {type:"text/csv"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href=url; a.download="contatos.csv"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  };
+  document.getElementById("exportJson").onclick=()=>{
+    const arr=load(); if(!arr.length){ alert("Sem contatos ainda"); return; }
+    const blob = new Blob([JSON.stringify(arr,null,2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href=url; a.download="contatos.json"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  };
+  document.getElementById("clear").onclick=()=>{
+    if(!confirm("Tem certeza que deseja APAGAR TODOS os contatos?")) return;
+    localStorage.setItem(KEY, "[]");
+    load();
+  };
+
+  load();
+</script>
+</body>
+</html>

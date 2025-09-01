@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin - Números capturados</title>
+  <style>
+    body{font-family:Arial, sans-serif;padding:20px}
+    h1{color:#075E54}
+    ul{padding:0;list-style:none}
+    li{padding:8px;border-bottom:1px solid #ddd}
+    button{margin-top:20px;padding:10px 16px;background:#25D366;border:0;border-radius:6px;font-weight:bold;color:#064e3b;cursor:pointer}
+  </style>
+</head>
+<body>
+  <h1>Números capturados</h1>
+  <ul id="list"></ul>
+  <button id="export">Exportar CSV</button>
+
+  <script>
+    const list = document.getElementById('list');
+    const data = JSON.parse(localStorage.getItem('phones')||'[]');
+    data.forEach(num=>{
+      const li=document.createElement('li');
+      li.textContent=num;
+      list.appendChild(li);
+    });
+
+    document.getElementById('export').addEventListener('click', () => {
+      let csv="numero\n"+data.join("\n");
+      let blob=new Blob([csv],{type:"text/csv"});
+      let a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download="numeros.csv";
+      a.click();
+    });
+  </script>
+</body>
+</html>

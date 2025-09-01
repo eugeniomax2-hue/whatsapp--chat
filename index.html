@@ -6,7 +6,7 @@
   <title>Arthur Macamo — Chat</title>
   <meta name="theme-color" content="#075E54"/>
   <style>
-    :root{--wa-green:#075E54;--bg:#E5DDD5;--bubble-bot:#FFFFFF;--text:#111;--radius:18px}
+    :root{--wa-green:#075E54;--bg:#E5DDD5;--bubble-me:#D9FDD3;--bubble-bot:#FFFFFF;--text:#111;--radius:18px}
     *{box-sizing:border-box} html,body{height:100%}
     body{
       margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);
@@ -24,15 +24,19 @@
     .who small{color:#d1fae5}
     .chat{flex:1;overflow:auto;padding:10px 10px calc(6px + env(safe-area-inset-bottom)) 10px;-webkit-overflow-scrolling:touch}
     .msg{display:flex;margin:6px 0}
-    .msg .bubble{
-      max-width:88%;padding:10px 12px;border-radius:var(--radius);font-size:15px;line-height:1.35;white-space:pre-wrap;background:var(--bubble-bot);
-      border-bottom-left-radius:6px;box-shadow:0 1px 0 rgba(0,0,0,.05)
-    }
+    .msg.bot{justify-content:flex-start}
+    .msg.me{justify-content:flex-end}
+    .bubble{max-width:78%;padding:10px 12px;border-radius:var(--radius);font-size:15px;line-height:1.35;white-space:pre-wrap;box-shadow:0 1px 0 rgba(0,0,0,.05)}
+    .msg.bot .bubble{background:var(--bubble-bot);border-bottom-left-radius:6px}
+    .msg.me .bubble{background:var(--bubble-me);border-bottom-right-radius:6px}
     .time{display:inline-block;margin-left:8px;font-size:11px;color:#8f8f8f;vertical-align:bottom}
-    .cta{
-      display:inline-block;margin-top:12px;padding:14px 18px;border-radius:12px;background:#25D366;color:#064e3b;font-weight:800;text-decoration:none;
-      min-width:260px;text-align:center
-    }
+    .composer{position:sticky;bottom:0;display:flex;gap:8px;align-items:center;padding:10px 10px calc(10px + env(safe-area-inset-bottom)) 10px;background:#f7f7f7;border-top:1px solid #e9ecef}
+    .attach-btn,.mic-btn{width:42px;height:42px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;display:grid;place-items:center}
+    .attach-btn svg,.mic-btn svg{width:20px;height:20px;opacity:.85}
+    .composer input{flex:1;padding:13px 16px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;font-size:17px;line-height:1.2}
+    .composer button.send{padding:12px 18px;border-radius:999px;border:0;background:#128C7E;color:#fff;font-weight:700;font-size:17px}
+    .img-msg{display:block;max-width:240px;border-radius:12px;margin-bottom:4px}
+    .cta{display:inline-block;margin-top:12px;padding:14px 18px;border-radius:12px;background:#25D366;color:#064e3b;font-weight:800;text-decoration:none;min-width:260px;text-align:center}
   </style>
 </head>
 <body>
@@ -40,7 +44,7 @@
     <!-- Topo estilo WhatsApp -->
     <header class="topbar">
       <div class="avatar">
-        <!-- Podes trocar o src abaixo pela tua foto de perfil (URL ou data URI) -->
+        <!-- Coloca um arquivo "avatar.jpg" junto do index.html -->
         <img src="avatar.jpg" alt="Arthur Macamo"/>
       </div>
       <div class="who">
@@ -57,10 +61,23 @@
 
     <!-- Área do chat -->
     <section class="chat" id="chat" aria-live="polite"></section>
+
+    <!-- Barra inferior (escrever, anexo, mic, enviar) -->
+    <div class="composer">
+      <button class="attach-btn" id="attachBtn" aria-label="Anexar foto">
+        <svg viewBox="0 0 24 24"><path d="M8 12.5V7a4 4 0 1 1 8 0v7.5a5.5 5.5 0 1 1-11 0V8.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <button class="mic-btn" id="micBtn" aria-label="Gravar áudio (visual)">
+        <svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a 3 3 0 0 0-3-3Zm-7 8a7 7 0 0 0 14 0M12 19v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <input id="input" type="text" placeholder="Escreve aqui..." autocomplete="off" inputmode="text"/>
+      <button class="send" id="send">Enviar</button>
+      <input type="file" id="file" accept="image/*" capture="environment" style="display:none"/>
+    </div>
   </main>
 
   <script>
-    // Mensagem única + botão
+    const CTA_URL = "https://wa.me/message/WTBHPX3AUQMEO1";
     const FINAL_MSG = `⚠️ IMPORTANTE: O Grupo Agora é Apenas para Quem Leva Isso a Sério!
 
 Muitas pessoas pedem para entrar no grupo, mas nem todas estão realmente interessadas. Algumas entram apenas por curiosidade, não aproveitam nada e acabam atrapalhando quem quer crescer de verdade.
@@ -76,38 +93,62 @@ Depois de confirmares o pagamento, serás adicionado imediatamente.
 
 Agora a escolha é tua: ficas de fora ou entras para um ambiente onde as oportunidades são reais?.`;
 
-    const CTA_URL = "https://wa.me/message/WTBHPX3AUQMEO1";
-
     const chat = document.getElementById('chat');
+    const input = document.getElementById('input');
+    const sendBtn = document.getElementById('send');
+    const file = document.getElementById('file');
+    const attachBtn = document.getElementById('attachBtn');
 
     function now(){ return new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
     function escapeHtml(s){ return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
 
-    function addMsgWithCTA(text, url, label='👉 Clique aqui para pagar'){
-      const d = document.createElement('div');
-      d.className = 'msg';
-      const b = document.createElement('div');
-      b.className = 'bubble';
-      b.innerHTML = escapeHtml(text) + ` <span class='time'>${now()}</span>`;
-      const a = document.createElement('a');
-      a.href = url; a.target = '_blank'; a.rel='noopener';
-      a.className = 'cta';
-      a.textContent = label;
+    function addMsg(who,text){
+      const d=document.createElement('div'); d.className='msg '+(who==='me'?'me':'bot');
+      const b=document.createElement('div'); b.className='bubble';
+      b.innerHTML=escapeHtml(text)+` <span class='time'>${now()}</span>`;
+      d.appendChild(b); chat.appendChild(d); chat.scrollTop=chat.scrollHeight;
+    }
+
+    function addMsgWithCTA(text,url,label='👉 Clique aqui para pagar'){
+      const d=document.createElement('div'); d.className='msg bot';
+      const b=document.createElement('div'); b.className='bubble';
+      b.innerHTML=escapeHtml(text)+` <span class='time'>${now()}</span>`;
+      const a=document.createElement('a'); a.href=url; a.target='_blank'; a.rel='noopener'; a.className='cta'; a.textContent=label;
       a.addEventListener('click', () => {
         try { fbq('track', 'Purchase', {value: 1.00, currency: 'MZN', content_name: 'acesso_grupo_1mt'}); } catch(e) {}
       });
       b.appendChild(a);
       d.appendChild(b);
       chat.appendChild(d);
-      chat.scrollTop = chat.scrollHeight;
+      chat.scrollTop=chat.scrollHeight;
     }
 
     window.addEventListener('DOMContentLoaded', () => {
       addMsgWithCTA(FINAL_MSG, CTA_URL);
     });
+
+    // Entrada do usuário (visual)
+    sendBtn.addEventListener('click', () => {
+      const v=input.value.trim(); if(!v) return;
+      input.value=''; addMsg('me', v);
+    });
+    input.addEventListener('keydown', (e) => { if(e.key==='Enter'){ e.preventDefault(); sendBtn.click(); } });
+    attachBtn.addEventListener('click', () => file.click());
+    file.addEventListener('change', (e) => {
+      const f=e.target.files[0]; if(!f) return;
+      const reader=new FileReader();
+      reader.onload=(ev)=>{
+        const d=document.createElement('div'); d.className='msg me';
+        const b=document.createElement('div'); b.className='bubble';
+        const img=new Image(); img.src=ev.target.result; img.className='img-msg';
+        b.appendChild(img); b.innerHTML+=` <span class='time'>${now()}</span>`;
+        d.appendChild(b); chat.appendChild(d); chat.scrollTop=chat.scrollHeight;
+      };
+      reader.readAsDataURL(f); e.target.value='';
+    });
   </script>
 
-  <!-- Meta Pixel (teu ID) -->
+  <!-- Meta Pixel -->
   <script>
   !function(f,b,e,v,n,t,s)
   {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -117,7 +158,7 @@ Agora a escolha é tua: ficas de fora ou entras para um ambiente onde as oportun
   t.src=v;s=b.getElementsByTagName(e)[0];
   s.parentNode.insertBefore(t,s)}(window, document,'script',
   'https://connect.facebook.net/en_US/fbevents.js');
-  fbq('init', '1828238448117261');   // <-- mantém o teu Pixel ID
+  fbq('init', '1828238448117261');  // teu Pixel ID
   fbq('track', 'PageView');
   </script>
   <noscript><img height="1" width="1" style="display:none"
